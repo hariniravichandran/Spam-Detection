@@ -42,18 +42,21 @@ def write_dict(dictionary, dictname):
 	with open(dictname + '.py', 'w') as f:
 		f.write('content = ' + str(dictionary))
 
-def write_csv(dictionary, filename):
+def write_csv(features, filename):
 	with open(filename, 'wb') as f:
 		writer = csv.writer(f, delimiter = ',', quoting=csv.QUOTE_MINIMAL)
-		writer.writerow(['userId']+featuresList)
-		for userId in dictionary:
-			row = []
-			row.append(userId)
-			for key in featuresList:
-				if key not in dictionary[userId]:
-					dictionary[userId][key] = 0
-			row.extend([dictionary[userId][key] for key in featuresList])
-			writer.writerow(row)
+		writer.writerow(featuresList + ['class label'])
+		for category in ('spammers', 'legitimate'):
+			dictionary = features[category]
+			for userId in dictionary:
+				row = []
+				#row.append(userId)
+				for key in featuresList:
+					if key not in dictionary[userId]:
+						dictionary[userId][key] = 0
+				row.extend([dictionary[userId][key] for key in featuresList])
+				row.extend([category])
+				writer.writerow(row)
 
 def toString(unicodeData):
 	stringOut = unicodedata.normalize('NFKD',unicodeData).encode('ascii','ignore')
@@ -143,7 +146,8 @@ def extract_profile_features(location, filename, category):
 			c += 1
 			userId, createdAt, followings, followers, tweetCount, screenNameLength = row[0], row[1], row[3],row[4],row[5], row[6]
 			if userId not in features[category]:
-				features[category][userId] = {}
+				#features[category][userId] = {}
+				initialize_features(category, userId)
 			features[category][userId]['screenNameLength'] = int(screenNameLength)
 			features[category][userId]['followers'] = int(followers)
 			features[category][userId]['followings'] = int(followings)
@@ -164,7 +168,8 @@ def extract_following_rate(location, filename, category):
 			c += 1
 			userId, followingSeries = row
 			if userId not in features[category]:
-				features[category][userId] = {}
+				#features[category][userId] = {}
+				initialize_features(category, userId)
 			followingRate = []
 			features[category][userId]['averageFollowingRate'] = 0
 			followingSeries = followingSeries.split(',')
@@ -254,8 +259,7 @@ def getMostTweetedDate(mostTweeted,category):
 	mostTweeted[category] = {}
 	for userId in features[category]:
 		mostTweeted[category][userId] = {}
-		mostCommon = nltk.FreqDist(features[category][userId]['tweetFrequency'])\
-		.most_common(1)
+		mostCommon = nltk.FreqDist(features[category][userId]['tweetFrequency']).most_common(1)
 		mcYear, mcMonth, mcDay = mostCommon[0][0][0], mostCommon[0][0][1],mostCommon[0][0]\
 		[2]
 		mostTweeted[category][userId]['YMD'] = (mcYear,mcMonth,mcDay)
@@ -338,4 +342,4 @@ if __name__ == '__main__':
 	extract_similarities()
 	for category in ('spammers', 'legitimate'):
 		write_dict(features[category], 'features_' + category)
-		write_csv(features[category], 'FeaturesSelected_' + category+'.csv')
+	write_csv(features, 'FeaturesSelected.csv')
